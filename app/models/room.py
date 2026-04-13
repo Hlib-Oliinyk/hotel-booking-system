@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -11,3 +11,5 @@ class Room(Base):
     price_per_night: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=True)
     is_available: Mapped[bool] = mapped_column(default=True)
+
+    bookings: Mapped[list["Booking"]] = relationship(back_populates="room")
