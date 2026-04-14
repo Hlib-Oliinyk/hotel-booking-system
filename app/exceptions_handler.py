@@ -1,8 +1,8 @@
 from fastapi.responses import JSONResponse
 
-from app.utils.exceptions.room import RoomNotFound
 from app.utils.exceptions.hotel import HotelNotFound
 from app.utils.exceptions.token import InvalidCredentials
+from app.utils.exceptions.room import RoomNotFound, RoomAlreadyBooked
 from app.utils.exceptions.user import UserExists, UserNotFound, UserForbidden
 
 
@@ -48,4 +48,11 @@ def setup_exception_handler(app):
         return JSONResponse(
             status_code=404,
             content={"details": "Room not found"}
+        )
+
+    @app.exception_handler(RoomAlreadyBooked)
+    async def room_already_booked_handler(request, exc):
+        return JSONResponse(
+            status_code=409,
+            content={"details": "Room already booked"}
         )
