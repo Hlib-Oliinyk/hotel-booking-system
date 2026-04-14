@@ -1,7 +1,7 @@
 from fastapi.responses import JSONResponse
 
-from app.utils.exceptions.user import UserExists, UserNotFound
 from app.utils.exceptions.token import InvalidCredentials
+from app.utils.exceptions.user import UserExists, UserNotFound, UserForbidden
 
 
 def setup_exception_handler(app):
@@ -17,6 +17,13 @@ def setup_exception_handler(app):
         return JSONResponse(
             status_code=400,
             content={"details": "User already exists"}
+        )
+
+    @app.exception_handler(UserForbidden)
+    async def user_forbidden_handler(request, exc):
+        return JSONResponse(
+            status_code=403,
+            content={"details": "Insufficient access rights"}
         )
 
     @app.exception_handler(InvalidCredentials)

@@ -7,3 +7,7 @@ class UserExists(AppError):
 
 class UserNotFound(AppError):
     pass
+
+
+class UserForbidden(AppError):
+    pass

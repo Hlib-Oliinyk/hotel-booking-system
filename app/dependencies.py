@@ -6,10 +6,10 @@ from app.models.user import User
 from app.db.database import AsyncSessionLocal
 from app.services.user_service import UserService
 from app.services.token_service import TokenService
-from app.exceptions_handler import InvalidCredentials
 from app.repositories.user_repo import UserRepository
 from app.repositories.token_repo import TokenRepository
 from app.securities.authorization.jwt import jwt_generator
+from app.exceptions_handler import InvalidCredentials, UserForbidden
 
 
 async def get_db():
@@ -44,3 +44,9 @@ async def get_current_user(
     user_id = jwt_generator.get_details_from_token(token)
     user = await user_service.get_user(user_id)
     return user
+
+
+async def get_current_admin_user(current_user: Annotated[User, Depends(get_current_user)]):
+    if current_user.role != "admin":
+        raise UserForbidden()
+    return current_user
