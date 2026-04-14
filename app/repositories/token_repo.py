@@ -1,6 +1,5 @@
-from datetime import datetime, timezone, timedelta
-
 from sqlalchemy import select, update
+from datetime import datetime, timezone, timedelta
 
 from app.models.refresh_token import RefreshToken
 from app.repositories.base import BaseRepository
