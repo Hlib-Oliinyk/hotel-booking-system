@@ -7,3 +7,7 @@ class RoomNotFound(AppError):
 
 class RoomAlreadyBooked(AppError):
     pass
+
+
+class RoomIsNotAvailable(AppError):
+    pass
