@@ -1,5 +1,6 @@
 from app.exceptions_handler import RoomNotFound
 from app.schemas.room import RoomCreate, RoomUpdate
+from app.utils.exceptions.hotel import HotelNotFound
 from app.repositories.room_repo import RoomRepository
 from app.repositories.hotel_repo import HotelRepository
 
@@ -12,7 +13,7 @@ class RoomService:
     async def create_new_room(self, room_data: RoomCreate):
         hotel = await self.hotel_repo.find_by_id(room_data.hotel_id)
         if not hotel:
-            raise RoomNotFound()
+            raise HotelNotFound()
         return await self.room_repo.add_one(room_data.model_dump())
 
     async def get_all_rooms(self, **filters):

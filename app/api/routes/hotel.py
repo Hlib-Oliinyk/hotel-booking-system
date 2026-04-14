@@ -12,7 +12,7 @@ router = APIRouter(
     tags=["Hotel"]
 )
 
-@router.post("/", response_model=HotelResponse)
+@router.post("", response_model=HotelResponse)
 async def create_hotel(
     hotel_data: HotelCreate,
     admin_user: Annotated[User, Depends(get_current_admin_user)],
@@ -21,7 +21,7 @@ async def create_hotel(
     return await hotel_service.add_hotel(hotel_data)
 
 
-@router.get("/", response_model=list[HotelResponse])
+@router.get("", response_model=list[HotelResponse])
 async def get_hotels(
     hotel_service: Annotated[HotelService, Depends(get_hotel_service)],
     location: str | None = None
