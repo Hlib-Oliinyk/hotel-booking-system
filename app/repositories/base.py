@@ -18,6 +18,11 @@ class BaseRepository:
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
+    async def find_by_id(self, model_id: int):
+        query = select(self.model).filter_by(id=model_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def add_one(self, data: dict):
         stmt = insert(self.model).values(**data).returning(self.model)
         result = await self.db.execute(stmt)
