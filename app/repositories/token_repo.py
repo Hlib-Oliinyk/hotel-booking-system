@@ -19,11 +19,7 @@ class TokenRepository(BaseRepository):
         return result.scalar_one_or_none()
 
     async def save_token(self, **data) -> RefreshToken:
-        refresh_token = RefreshToken(**data)
-        self.db.add(refresh_token)
-        await self.db.commit()
-        await self.db.refresh(refresh_token)
-        return refresh_token
+        return await self.add_one(data)
 
     async def rotate_token_data(
         self,
@@ -31,24 +27,14 @@ class TokenRepository(BaseRepository):
         user_id: int,
         new_token_hash: str
     ) -> RefreshToken:
-        await self.db.execute(
-            update(RefreshToken)
-            .where(RefreshToken.id == old_token_id)
-            .values(is_revoked = True)
-        )
+        await self.update_one(old_token_id, {"is_revoked": True})
 
-        new_refresh_token = RefreshToken(
-            user_id=user_id,
-            token=new_token_hash,
-            expired_at=datetime.now(timezone.utc) + timedelta(days=14)
-        )
-
-        self.db.add(new_refresh_token)
-        await self.db.commit()
-        await self.db.refresh(new_refresh_token)
-        return new_refresh_token
+        return await self.add_one({
+            "user_id": user_id,
+            "token": new_token_hash,
+            "expired_at": datetime.now(timezone.utc) + timedelta(days=14)
+        })
 
     async def delete_token(self, token_hash: str):
-        stmt = update(RefreshToken).where(RefreshToken.token == token_hash).values(is_revoked = True)
+        stmt = update(RefreshToken).where(RefreshToken.token == token_hash).values(is_revoked=True)
         await self.db.execute(stmt)
-        await self.db.commit()
