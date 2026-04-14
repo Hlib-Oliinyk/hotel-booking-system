@@ -12,7 +12,13 @@ async_engine = create_async_engine(
     echo = False
 )
 
+test_async_engine = create_async_engine(
+    settings.TEST_DB_URL,
+    echo = False
+)
+
 AsyncSessionLocal = async_sessionmaker(async_engine, expire_on_commit = False)
+AsyncSessionTest = async_sessionmaker(test_async_engine, expire_on_commit = False)
 
 class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

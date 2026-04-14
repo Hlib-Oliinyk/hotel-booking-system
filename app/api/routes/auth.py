@@ -68,10 +68,11 @@ async def logout(
     service: Annotated[TokenService, Depends(get_token_service)]
 ):
     refresh_token = request.cookies.get("refresh_token")
-    await service.delete_refresh_token(refresh_token)
+    if refresh_token is not None:
+        await service.delete_refresh_token(refresh_token)
 
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
 
     return {
         "detail": "Logged out"
