@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_URL: str = ""
 
+    SECRET_KEY: str
+    ALGORITHM: str
+
     @model_validator(mode="after")
     def build_db_url(self):
         self.DB_URL = f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}/{self.DB_NAME}"

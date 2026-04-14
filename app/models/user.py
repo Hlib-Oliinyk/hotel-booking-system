@@ -18,3 +18,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(default=UserRole.CUSTOMER)
 
     bookings: Mapped[list["Booking"]] = relationship(back_populates="user")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )
