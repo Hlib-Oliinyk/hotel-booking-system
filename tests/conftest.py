@@ -11,7 +11,9 @@ from tests.data import (
     TEST_USER,
     TEST_LOGIN,
     TEST_ADMIN,
-    TEST_ADMIN_LOGIN
+    TEST_ADMIN_LOGIN,
+    TEST_HOTEL,
+    TEST_ROOM
 )
 
 
@@ -83,3 +85,18 @@ async def admin_client():
         response = await client.post("/auth/login", json=TEST_ADMIN_LOGIN)
         assert response.status_code == 200
         yield client
+
+
+@pytest_asyncio.fixture
+async def get_hotel_id(admin_client):
+    response = await admin_client.post("/hotel", json=TEST_HOTEL)
+    assert response.status_code == 200
+    return response.json()["id"]
+
+
+@pytest_asyncio.fixture
+async def room_number(admin_client, get_hotel_id):
+    body = {"hotel_id": get_hotel_id, **TEST_ROOM}
+    response = await admin_client.post("/rooms", json=body)
+    assert response.status_code == 201
+    return response.json()["number"]

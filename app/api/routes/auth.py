@@ -1,19 +1,30 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, Response, Request
 
+from app.models.user import User
 from app.securities.hashing import hash_token
 from app.services.user_service import UserService
 from app.services.token_service import TokenService
 from app.utils.exceptions.token import InvalidCredentials
 from app.securities.authorization.jwt import jwt_generator
-from app.dependencies import get_user_service, get_token_service
 from app.schemas.user import UserCreate, UserResponse, UserLogin
+from app.dependencies import get_user_service, get_token_service, get_current_user
 
 
 router = APIRouter(
     prefix="/auth",
     tags=["Auth"]
 )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(
+    current_user: Annotated[User, Depends(get_current_user)],
+    service: Annotated[UserService, Depends(get_user_service)]
+):
+    user = await service.get_user(current_user.id)
+    return user
+
 
 @router.post("/register", response_model=UserResponse)
 async def register(
