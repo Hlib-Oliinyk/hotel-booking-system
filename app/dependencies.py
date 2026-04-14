@@ -10,9 +10,11 @@ from app.services.hotel_service import HotelService
 from app.services.token_service import TokenService
 from app.repositories.room_repo import RoomRepository
 from app.repositories.user_repo import UserRepository
+from app.services.booking_service import BookingService
 from app.repositories.hotel_repo import HotelRepository
 from app.repositories.token_repo import TokenRepository
 from app.securities.authorization.jwt import jwt_generator
+from app.repositories.booking_repo import BookingRepository
 from app.exceptions_handler import InvalidCredentials, UserForbidden
 
 
@@ -29,12 +31,16 @@ def get_token_service(db: Annotated[AsyncSession, Depends(get_db)]) -> TokenServ
     return TokenService(TokenRepository(db), UserRepository(db))
 
 
-async def get_hotel_service(db: AsyncSession = Depends(get_db)) -> HotelService:
+async def get_hotel_service(db: Annotated[AsyncSession, Depends(get_db)]) -> HotelService:
     return HotelService(HotelRepository(db))
 
 
-async def get_room_service(db: AsyncSession = Depends(get_db)) -> RoomService:
+async def get_room_service(db: Annotated[AsyncSession, Depends(get_db)]) -> RoomService:
     return RoomService(RoomRepository(db), HotelRepository(db))
+
+
+async def get_booking_service(db: Annotated[AsyncSession, Depends(get_db)]) -> BookingService:
+    return BookingService(BookingRepository(db), RoomRepository(db))
 
 
 def get_token_from_header_or_cookie(request: Request) -> str:
