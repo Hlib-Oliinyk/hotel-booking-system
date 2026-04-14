@@ -5,8 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.db.database import AsyncSessionLocal
 from app.services.user_service import UserService
+from app.services.token_service import TokenService
 from app.exceptions_handler import InvalidCredentials
 from app.repositories.user_repo import UserRepository
+from app.repositories.token_repo import TokenRepository
 from app.securities.authorization.jwt import jwt_generator
 
 
@@ -17,6 +19,10 @@ async def get_db():
 
 def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:
     return UserService(UserRepository(db))
+
+
+def get_token_service(db: Annotated[AsyncSession, Depends(get_db)]) -> TokenService:
+    return TokenService(TokenRepository(db), UserRepository(db))
 
 
 def get_token_from_header_or_cookie(request: Request) -> str:

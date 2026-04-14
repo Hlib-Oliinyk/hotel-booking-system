@@ -18,9 +18,8 @@ class UserService:
             raise UserExists()
 
         user_dict = data.model_dump()
-        user_dict["password"] = hash_password(user_dict.pop("password"))
-
-        return await self.repo.add_one(**user_dict)
+        user_dict["hashed_password"] = hash_password(user_dict.pop("password"))
+        return await self.repo.add_one(user_dict)
 
     async def get_user(self, user_id: int) -> User:
         user = await self.repo.get_by_id(user_id)

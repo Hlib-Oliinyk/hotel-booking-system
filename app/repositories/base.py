@@ -21,13 +21,16 @@ class BaseRepository:
     async def add_one(self, data: dict):
         stmt = insert(self.model).values(**data).returning(self.model)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.scalar_one()
 
     async def update_one(self, row_id: int, data: dict):
         stmt = update(self.model).where(self.model.id == row_id).values(**data).returning(self.model)
         result = await self.db.execute(stmt)
+        await self.db.commit()
         return result.scalar_one()
 
     async def delete_one(self, row_id: int):
         stmt = delete(self.model).where(self.model.id == row_id)
         await self.db.execute(stmt)
+        await self.db.commit()
