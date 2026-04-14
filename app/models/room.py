@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -6,9 +6,12 @@ from app.db.database import Base
 
 class Room(Base):
     __tablename__ = "rooms"
+    __table_args__ = (
+        UniqueConstraint("hotel_id", "number", name="uq_room_hotel_number"),
+    )
 
     hotel_id: Mapped[int] = mapped_column(ForeignKey("hotels.id"), nullable=False)
-    number: Mapped[str] = mapped_column(unique=True, nullable=False)
+    number: Mapped[str] = mapped_column(nullable=False)
     room_type: Mapped[str] = mapped_column(nullable=False)
     price_per_night: Mapped[int] = mapped_column(nullable=False)
     description: Mapped[str] = mapped_column(nullable=True)

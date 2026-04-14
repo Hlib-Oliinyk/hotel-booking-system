@@ -20,7 +20,8 @@ async def add_booking(
 ):
     return await booking_service.create_booking(
         user_id=current_user.id,
-        room_id=booking_data.room_id,
+        hotel_id=booking_data.hotel_id,
+        room_number=booking_data.room_number,
         check_in=booking_data.check_in,
         check_out=booking_data.check_out
     )

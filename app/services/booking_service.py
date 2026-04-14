@@ -17,20 +17,17 @@ class BookingService:
         self.booking_repo = booking_repo
         self.room_repo = room_repo
 
-    async def create_booking(self, user_id: int, room_id: int, check_in: date, check_out: date):
+    async def create_booking(self, user_id: int, hotel_id: int, room_number: str, check_in: date, check_out: date):
         if check_in >= check_out:
-            raise HTTPException(
-                status_code=400,
-                detail="Дата заїзду має бути раніше дати виїзду"
-            )
+            raise HTTPException(status_code=400, detail="Дата заїзду має бути раніше дати виїзду")
 
-        room = await self.room_repo.find_by_id(room_id)
+        room = await self.room_repo.find_by_hotel_and_number(hotel_id, room_number)
         if not room:
             raise RoomNotFound()
         if not room.is_available:
             raise RoomIsNotAvailable()
 
-        booked_count = await self.booking_repo.get_booked_count(room_id, check_in, check_out)
+        booked_count = await self.booking_repo.get_booked_count(room.id, check_in, check_out)
         if booked_count >= 1:
             raise RoomAlreadyBooked()
 
@@ -39,7 +36,7 @@ class BookingService:
 
         booking_data = {
             "user_id": user_id,
-            "room_id": room_id,
+            "room_id": room.id,
             "check_in": check_in,
             "check_out": check_out,
             "total_cost": total_cost,
