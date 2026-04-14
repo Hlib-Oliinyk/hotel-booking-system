@@ -9,7 +9,12 @@ class BookingBase(BaseModel):
     check_out: date
 
 
-class BookingCreate(BookingBase):
+class BookingCreate(BaseModel):
+    hotel_id: int
+    room_number: str
+    check_in: date
+    check_out: date
+
     @model_validator(mode="after")
     def validate_dates(self) -> Self:
         if self.check_in >= self.check_out:
