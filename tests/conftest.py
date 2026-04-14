@@ -1,13 +1,17 @@
 import pytest_asyncio
 
+from sqlalchemy import select
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
 from app.dependencies import get_db
+from app.models.user import User, UserRole
 from app.db.database import Base, AsyncSessionTest, test_async_engine
 from tests.data import (
     TEST_USER,
-    TEST_LOGIN
+    TEST_LOGIN,
+    TEST_ADMIN,
+    TEST_ADMIN_LOGIN
 )
 
 
@@ -49,8 +53,33 @@ async def async_client():
 
 
 @pytest_asyncio.fixture
-async def authorized_client(async_client):
-    await async_client.post("/auth/register", json=TEST_USER)
-    response = await async_client.post('/auth/login', json=TEST_LOGIN)
-    assert response.status_code == 200
-    return async_client
+async def authorized_client():
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as client:
+        await client.post("/auth/register", json=TEST_USER)
+        response = await client.post("/auth/login", json=TEST_LOGIN)
+        assert response.status_code == 200
+        yield client
+
+
+@pytest_asyncio.fixture
+async def admin_client():
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as client:
+        await client.post("/auth/register", json=TEST_ADMIN)
+
+        async with AsyncSessionTest() as db:
+            result = await db.execute(
+                select(User).where(User.email == TEST_ADMIN["email"])
+            )
+            user = result.scalar_one()
+            user.role = UserRole.ADMIN
+            await db.commit()
+
+        response = await client.post("/auth/login", json=TEST_ADMIN_LOGIN)
+        assert response.status_code == 200
+        yield client

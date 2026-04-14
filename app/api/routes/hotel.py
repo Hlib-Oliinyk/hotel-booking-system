@@ -33,7 +33,7 @@ async def get_hotels(
 async def update_hotel(
     hotel_id: int,
     hotel_data: HotelCreate,
-    admin_user: Annotated[User, Depends(get_current_admin_user)],
+    current_user: Annotated[User, Depends(get_current_admin_user)],
     hotel_service: Annotated[HotelService, Depends(get_hotel_service)]
 ):
     return await hotel_service.update_hotel(hotel_id, hotel_data)

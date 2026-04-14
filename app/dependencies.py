@@ -32,7 +32,7 @@ def get_token_service(db: Annotated[AsyncSession, Depends(get_db)]) -> TokenServ
 
 
 async def get_hotel_service(db: Annotated[AsyncSession, Depends(get_db)]) -> HotelService:
-    return HotelService(HotelRepository(db))
+    return HotelService(HotelRepository(db), UserRepository(db))
 
 
 async def get_room_service(db: Annotated[AsyncSession, Depends(get_db)]) -> RoomService:
