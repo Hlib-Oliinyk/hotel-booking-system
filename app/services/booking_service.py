@@ -3,7 +3,13 @@ from fastapi import HTTPException
 
 from app.repositories.room_repo import RoomRepository
 from app.repositories.booking_repo import BookingRepository
-from app.exceptions_handler import RoomNotFound, RoomAlreadyBooked
+from app.exceptions_handler import (
+    RoomNotFound,
+    RoomAlreadyBooked,
+    RoomIsNotAvailable,
+    BookingNotFound,
+    BookingAlreadyCancelled
+)
 
 
 class BookingService:
@@ -21,6 +27,8 @@ class BookingService:
         room = await self.room_repo.find_by_id(room_id)
         if not room:
             raise RoomNotFound()
+        if not room.is_available:
+            raise RoomIsNotAvailable()
 
         booked_count = await self.booking_repo.get_booked_count(room_id, check_in, check_out)
         if booked_count >= 1:
@@ -38,3 +46,26 @@ class BookingService:
             "status": "confirmed"
         }
         return await self.booking_repo.add_one(booking_data)
+
+    async def get_user_bookings(self, user_id: int):
+        return await self.booking_repo.find_all(user_id=user_id)
+
+    async def cancel_booking(self, booking_id: int, user_id: int):
+        booking = await self.booking_repo.find_by_id(booking_id)
+
+        if not booking:
+            raise BookingNotFound()
+
+        if booking.user_id != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Ви не можете скасувати чуже бронювання"
+            )
+
+        if booking.status == "cancelled":
+            raise BookingAlreadyCancelled()
+
+        return await self.booking_repo.update_one(
+            booking_id,
+            {"status": "cancelled"}
+        )
