@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}HotelBook — Знайдіть свій ідеальний готель{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="hero">
+        <h1>Знайдіть свій<br>ідеальний готель</h1>
+        <p>Тисячі готелів по всій Україні. Простий пошук, миттєве бронювання.</p>
+        <form class="search-bar" action="/hotels" method="get">
+            <input
+                type="text"
+                name="q"
+                placeholder="Назва готелю або місто..."
+                autocomplete="off"
+                id="main-search"
+            >
+            <button type="submit">Знайти</button>
+        </form>
+    </section>
+
+    <section class="section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+            <div>
+                <h2 class="section-title">Популярні готелі</h2>
+                <p class="section-subtitle">Відкрийте для себе найкращі місця для проживання</p>
+            </div>
+            <a href="/hotels" class="btn btn-outline btn-sm">Всі готелі</a>
+        </div>
+
+        <div class="hotels-grid" id="featured-hotels">
+            <div class="loading-center"><div class="spinner"></div></div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadFeaturedHotels() {
+    const container = document.getElementById('featured-hotels');
+    try {
+        const hotels = await API.get('/hotel');
+        const featured = hotels.slice(0, 6);
+
+        if (featured.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column:1/-1">
+                    <div class="empty-state-icon">&#127970;</div>
+                    <p>Готелі ще не додані</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = featured.map(hotel => `
+            <a href="/hotels/${hotel.id}" class="hotel-card">
+                <div class="hotel-card-img"></div>
+                <div class="hotel-card-body">
+                    <div class="hotel-card-title">${hotel.title}</div>
+                    <div class="hotel-location">${hotel.location}</div>
+                    ${hotel.stars ? `<div class="hotel-stars">${renderStars(hotel.stars)}</div>` : ''}
+                    ${hotel.description ? `<div class="hotel-desc">${hotel.description}</div>` : ''}
+                    <div class="hotel-card-footer">
+                        <span class="tag tag-green">Доступний</span>
+                        <span class="btn btn-ghost btn-sm">Детальніше -></span>
+                    </div>
+                </div>
+            </a>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1">${e.message}</div>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadFeaturedHotels);
+</script>
+{% endblock %}
