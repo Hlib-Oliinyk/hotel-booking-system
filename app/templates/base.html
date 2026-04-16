@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HotelBook{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/main.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <div class="nav-inner">
+                <a href="/" class="nav-logo">Hotel<span>Book</span></a>
+
+                <form class="nav-search-form" action="/hotels" method="get">
+                    <input
+                        type="text"
+                        name="q"
+                        placeholder="Пошук готелів..."
+                        value="{{ request.query_params.get('q', '') }}"
+                        autocomplete="off"
+                    >
+                    <button type="submit">-></button>
+                </form>
+
+                <div class="nav-links">
+                    <a href="/hotels" class="btn btn-ghost btn-sm">Готелі</a>
+                    <a href="/admin" class="btn btn-ghost btn-sm admin-only" style="display:none">Адмін</a>
+
+                    <a href="/login" class="btn btn-outline btn-sm" id="nav-login">Увійти</a>
+
+                    <div class="user-menu" id="nav-user-menu" style="display:none">
+                        <button class="user-menu-btn" id="user-menu-btn" onclick="toggleUserMenu()">
+                            <span id="nav-user-email">Профіль</span>
+                            <span>&#9660;</span>
+                        </button>
+                        <div class="user-menu-dropdown" id="user-dropdown">
+                            <a href="/profile">Мій профіль</a>
+                            <a href="/profile/bookings">Бронювання</a>
+                            <button class="logout-btn" onclick="Auth.logout()">Вийти</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-inner">
+                <span>HotelBook &copy; {{ 2025 }}</span>
+                <span>Система бронювання готелів</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', path='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
