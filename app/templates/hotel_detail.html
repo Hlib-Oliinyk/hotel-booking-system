@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Готель — HotelBook{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div id="hotel-content">
+        <div class="loading-center"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="booking-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Бронювання номеру</h2>
+            <button class="modal-close" onclick="closeModal('booking-modal')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div id="booking-modal-alert"></div>
+            <div style="margin-bottom:1rem">
+                <p style="font-size:0.875rem;color:var(--text-secondary)">Номер: <strong id="modal-room-number"></strong></p>
+                <p style="font-size:0.875rem;color:var(--text-secondary)">Ціна: <strong id="modal-room-price"></strong> / ніч</p>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Заїзд</label>
+                    <input type="date" id="book-checkin" min="">
+                </div>
+                <div class="form-group">
+                    <label>Виїзд</label>
+                    <input type="date" id="book-checkout" min="">
+                </div>
+            </div>
+            <div id="booking-cost-preview" style="margin-top:1rem;padding:0.875rem;background:var(--accent-light);border-radius:var(--radius);display:none">
+                <p style="font-size:0.875rem;color:var(--accent)">Орієнтована вартість: <strong id="cost-preview"></strong></p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('booking-modal')">Скасувати</button>
+            <button class="btn btn-primary" onclick="submitBooking()" id="book-submit-btn">Забронювати</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const hotelId = parseInt(window.location.pathname.split('/').pop());
+let currentHotel = null;
+let selectedRoom = null;
+
+async function loadHotelPage() {
+    const content = document.getElementById('hotel-content');
+    try {
+        const [hotel, rooms] = await Promise.all([
+            API.get(`/hotel`).then(hotels => hotels.find(h => h.id === hotelId)),
+            API.get(`/rooms?hotel_id=${hotelId}`)
+        ]);
+
+        if (!hotel) {
+            content.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div><p>Готель не знайдено</p><a href="/hotels" class="btn btn-outline">Назад до списку</a></div>`;
+            return;
+        }
+
+        currentHotel = hotel;
+
+        content.innerHTML = `
+            <div class="page-header">
+                <div class="breadcrumb">
+                    <a href="/">Головна</a>
+                    <span>/</span>
+                    <a href="/hotels">Готелі</a>
+                    <span>/</span>
+                    <span>${hotel.title}</span>
+                </div>
+                <div class="hotel-detail-header">
+                    <div class="hotel-detail-info">
+                        <h1>${hotel.title}</h1>
+                        <div class="hotel-detail-meta">
+                            <span class="hotel-location">${hotel.location}</span>
+                            ${hotel.stars ? `<span class="hotel-stars">${renderStars(hotel.stars)} ${hotel.stars} зірки</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                ${hotel.description ? `<p style="margin-top:1rem;color:var(--text-secondary);max-width:600px">${hotel.description}</p>` : ''}
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="section-header">
+                <h2 class="section-title">Номери</h2>
+                <span style="font-size:0.875rem;color:var(--text-muted)">${rooms.length} ${rooms.length === 1 ? 'номер' : 'номерів'}</span>
+            </div>
+
+            <div class="rooms-grid" id="rooms-container">
+                ${renderRooms(rooms)}
+            </div>
+        `;
+
+        setMinDates();
+    } catch (e) {
+        content.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function renderRooms(rooms) {
+    if (rooms.length === 0) {
+        return `<div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state-icon"></div>
+            <p>У цьому готелі немає номерів</p>
+        </div>`;
+    }
+
+    return rooms.map(room => `
+        <div class="room-card" id="room-${room.id}">
+            <div class="room-card-header" onclick="toggleRoom(${room.id}, '${room.number}', ${room.price_per_night}, ${room.is_available})">
+                <div>
+                    <div class="room-number">Номер ${room.number}</div>
+                    <div class="room-type">${room.room_type}</div>
+                </div>
+                <div style="text-align:right">
+                    <div class="room-price">${formatCurrency(room.price_per_night)}</div>
+                    <div style="font-size:0.75rem;color:var(--text-muted)">за ніч</div>
+                </div>
+            </div>
+            <div class="room-card-body" onclick="toggleRoom(${room.id}, '${room.number}', ${room.price_per_night}, ${room.is_available})">
+                <span class="tag ${room.is_available ? 'tag-green' : 'tag-danger'}">
+                    ${room.is_available ? 'Доступний' : 'Зайнятий'}
+                </span>
+                <span style="font-size:0.8rem;color:var(--text-muted)">Деталі -></span>
+            </div>
+            <div class="room-details" id="room-details-${room.id}">
+                <div class="room-details-inner">
+                    ${room.description ? `<p class="room-desc">${room.description}</p>` : '<p class="room-desc" style="color:var(--text-muted);font-style:italic">Опис відсутній</p>'}
+                    ${room.is_available
+                        ? `<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openBookingModal('${room.number}', ${room.price_per_night})">Забронювати</button>`
+                        : `<button class="btn btn-outline" style="width:100%;justify-content:center;opacity:0.5" disabled>Номер зайнятий</button>`
+                    }
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleRoom(roomId, number, price, available) {
+    const details = document.getElementById(`room-details-${roomId}`);
+    const card = document.getElementById(`room-${roomId}`);
+    const wasOpen = details.classList.contains('open');
+
+    document.querySelectorAll('.room-details.open').forEach(d => d.classList.remove('open'));
+    document.querySelectorAll('.room-card.expanded').forEach(c => c.classList.remove('expanded'));
+
+    if (!wasOpen) {
+        details.classList.add('open');
+        card.classList.add('expanded');
+    }
+}
+
+function openBookingModal(roomNumber, pricePerNight) {
+    if (!Auth.isLoggedIn()) {
+        window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+        return;
+    }
+
+    selectedRoom = { number: roomNumber, price: pricePerNight };
+    document.getElementById('modal-room-number').textContent = roomNumber;
+    document.getElementById('modal-room-price').textContent = formatCurrency(pricePerNight);
+    document.getElementById('booking-modal-alert').innerHTML = '';
+    document.getElementById('booking-cost-preview').style.display = 'none';
+    document.getElementById('book-checkin').value = '';
+    document.getElementById('book-checkout').value = '';
+
+    openModal('booking-modal');
+}
+
+function setMinDates() {
+    const today = new Date().toISOString().split('T')[0];
+    const checkin = document.getElementById('book-checkin');
+    const checkout = document.getElementById('book-checkout');
+    if (checkin) checkin.min = today;
+    if (checkout) checkout.min = today;
+}
+
+function updateCostPreview() {
+    const checkin = document.getElementById('book-checkin').value;
+    const checkout = document.getElementById('book-checkout').value;
+    const preview = document.getElementById('booking-cost-preview');
+    const costEl = document.getElementById('cost-preview');
+
+    if (checkin && checkout && selectedRoom) {
+        const days = Math.ceil((new Date(checkout) - new Date(checkin)) / 86400000);
+        if (days > 0) {
+            costEl.textContent = formatCurrency(days * selectedRoom.price) + ` (${days} ${days === 1 ? 'ніч' : 'ночей'})`;
+            preview.style.display = 'block';
+            return;
+        }
+    }
+    preview.style.display = 'none';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadHotelPage();
+
+    document.getElementById('book-checkin').addEventListener('change', () => {
+        const checkin = document.getElementById('book-checkin').value;
+        document.getElementById('book-checkout').min = checkin;
+        updateCostPreview();
+    });
+    document.getElementById('book-checkout').addEventListener('change', updateCostPreview);
+});
+
+async function submitBooking() {
+    if (!selectedRoom) return;
+
+    const checkin = document.getElementById('book-checkin').value;
+    const checkout = document.getElementById('book-checkout').value;
+    const alertContainer = document.getElementById('booking-modal-alert');
+    const btn = document.getElementById('book-submit-btn');
+
+    if (!checkin || !checkout) {
+        showAlert(alertContainer, 'Оберіть дати заїзду та виїзду');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Бронювання...';
+
+    try {
+        await API.post('/booking', {
+            hotel_id: hotelId,
+            room_number: selectedRoom.number,
+            check_in: checkin,
+            check_out: checkout
+        });
+
+        closeModal('booking-modal');
+        window.location.href = '/profile/bookings?success=1';
+    } catch (e) {
+        showAlert(alertContainer, e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Забронювати';
+    }
+}
+</script>
+{% endblock %}
