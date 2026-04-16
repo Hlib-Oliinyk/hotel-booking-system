@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Готелі — HotelBook{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Готелі</h1>
+        <p>Знайдіть готель за назвою або локацією</p>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem">
+        <form style="display:flex;gap:0.5rem;flex-wrap:wrap" id="search-form">
+            <div class="search-bar" style="max-width:400px;margin:0">
+                <input
+                    type="text"
+                    id="search-input"
+                    placeholder="Назва або місто..."
+                    autocomplete="off"
+                >
+                <button type="submit">Знайти</button>
+            </div>
+        </form>
+        <div id="results-count" style="font-size:0.875rem;color:var(--text-muted)"></div>
+    </div>
+
+    <div class="hotels-grid" id="hotels-container">
+        <div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const initialQuery = urlParams.get('q') || '';
+
+async function loadHotels(query = '') {
+    const container = document.getElementById('hotels-container');
+    const countEl = document.getElementById('results-count');
+    container.innerHTML = '<div class="loading-center" style="grid-column:1/-1"><div class="spinner"></div></div>';
+
+    try {
+        const params = query ? `?search=${encodeURIComponent(query)}` : '';
+        const hotels = await API.get('/hotel' + params);
+
+        countEl.textContent = hotels.length
+            ? `Знайдено: ${hotels.length} ${hotels.length === 1 ? 'готель' : 'готелів'}`
+            : '';
+
+        if (hotels.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column:1/-1">
+                    <div class="empty-state-icon"></div>
+                    <p>${query ? `За запитом «${query}» нічого не знайдено` : 'Готелі відсутні'}</p>
+                    ${query ? '<button class="btn btn-outline" onclick="clearSearch()">Скинути пошук</button>' : ''}
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = hotels.map(hotel => `
+            <a href="/hotels/${hotel.id}" class="hotel-card">
+                <div class="hotel-card-img"></div>
+                <div class="hotel-card-body">
+                    <div class="hotel-card-title">${hotel.title}</div>
+                    <div class="hotel-location">${hotel.location}</div>
+                    ${hotel.stars ? `<div class="hotel-stars">${renderStars(hotel.stars)} <span style="font-size:0.8rem;color:var(--text-muted)">${hotel.stars} зірки</span></div>` : ''}
+                    ${hotel.description ? `<div class="hotel-desc">${hotel.description}</div>` : ''}
+                    <div class="hotel-card-footer">
+                        <span class="tag tag-green">Доступний</span>
+                        <span class="btn btn-ghost btn-sm">Переглянути -></span>
+                    </div>
+                </div>
+            </a>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1">${e.message}</div>`;
+    }
+}
+
+function clearSearch() {
+    document.getElementById('search-input').value = '';
+    history.replaceState({}, '', '/hotels');
+    loadHotels();
+}
+
+document.getElementById('search-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const q = document.getElementById('search-input').value.trim();
+    history.replaceState({}, '', q ? `/hotels?q=${encodeURIComponent(q)}` : '/hotels');
+    loadHotels(q);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (initialQuery) {
+        document.getElementById('search-input').value = initialQuery;
+    }
+    loadHotels(initialQuery);
+});
+</script>
+{% endblock %}
