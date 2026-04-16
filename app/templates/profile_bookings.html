@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Мої бронювання — HotelBook{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-layout">
+        <aside class="profile-sidebar">
+            <div class="profile-avatar" id="profile-avatar">?</div>
+            <div class="profile-email" id="profile-email-display"></div>
+            <div class="profile-role" id="profile-role-display"></div>
+
+            <a href="/profile" class="sidebar-link">Профіль</a>
+            <a href="/profile/bookings" class="sidebar-link active">Мої бронювання</a>
+            <div class="sidebar-link admin-only" style="display:none;border-top:1px solid var(--border);margin-top:0.5rem;padding-top:0.75rem">
+                <a href="/admin" style="color:var(--accent);font-size:0.875rem">&#9881; Адмін панель</a>
+            </div>
+            <button class="sidebar-link danger" onclick="Auth.logout()" style="margin-top:auto">Вийти</button>
+        </aside>
+
+        <div class="profile-main">
+            <div class="section-header">
+                <h2>Мої бронювання</h2>
+                <a href="/hotels" class="btn btn-outline btn-sm">+ Нове бронювання</a>
+            </div>
+
+            <div id="success-banner" style="display:none" class="alert alert-success">
+                Бронювання успішно створено!
+            </div>
+
+            <div id="bookings-content">
+                <div class="loading-center"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const statusLabels = {
+    pending: { label: 'Очікує', cls: 'tag-warning' },
+    confirmed: { label: 'Підтверджено', cls: 'tag-green' },
+    cancelled: { label: 'Скасовано', cls: 'tag-danger' },
+};
+
+async function loadBookings() {
+    const content = document.getElementById('bookings-content');
+    try {
+        const user = await API.get('/auth/me');
+        document.getElementById('profile-avatar').textContent = user.email[0].toUpperCase();
+        document.getElementById('profile-email-display').textContent = user.email;
+        document.getElementById('profile-role-display').innerHTML = `<span class="tag ${user.role === 'admin' ? 'tag-warning' : 'tag-green'}">${user.role === 'admin' ? 'Адміністратор' : 'Клієнт'}</span>`;
+
+        if (user.role === 'admin') {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+        }
+
+        const bookings = await API.get('/booking/me');
+
+        if (bookings.length === 0) {
+            content.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon"></div>
+                    <p>У вас немає активних бронювань</p>
+                    <a href="/hotels" class="btn btn-primary">Знайти готель</a>
+                </div>`;
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="bookings-list">
+                ${bookings.map(b => {
+                    const status = statusLabels[b.status] || { label: b.status, cls: 'tag-gray' };
+                    const canCancel = b.status !== 'cancelled';
+                    return `
+                        <div class="booking-item" id="booking-${b.id}">
+                            <div class="booking-info">
+                                <h3>Бронювання #${b.id}</h3>
+                                <div class="booking-meta">
+                                    <span>${formatDate(b.check_in)} — ${formatDate(b.check_out)}</span>
+                                    <span>Номер ID: ${b.room_id}</span>
+                                </div>
+                                <div class="booking-cost">${formatCurrency(b.total_cost)}</div>
+                            </div>
+                            <div class="booking-actions">
+                                <span class="tag ${status.cls}">${status.label}</span>
+                                ${canCancel ? `<button class="btn btn-outline btn-sm" onclick="cancelBooking(${b.id})">Скасувати</button>` : ''}
+                            </div>
+                        </div>`;
+                }).join('')}
+            </div>`;
+    } catch {
+        window.location.href = '/login';
+    }
+}
+
+async function cancelBooking(bookingId) {
+    if (!confirm('Скасувати це бронювання?')) return;
+    try {
+        await API.patch(`/booking/${bookingId}`, {});
+        await loadBookings();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success')) {
+        document.getElementById('success-banner').style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('success-banner').style.display = 'none';
+        }, 4000);
+    }
+    loadBookings();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Профіль — HotelBook{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-layout">
+        <aside class="profile-sidebar">
+            <div class="profile-avatar" id="profile-avatar">?</div>
+            <div class="profile-email" id="profile-email-display"></div>
+            <div class="profile-role" id="profile-role-display"></div>
+
+            <a href="/profile" class="sidebar-link active">Профіль</a>
+            <a href="/profile/bookings" class="sidebar-link">Мої бронювання</a>
+            <div class="sidebar-link admin-only" style="display:none;border-top:1px solid var(--border);margin-top:0.5rem;padding-top:0.75rem">
+                <a href="/admin" style="color:var(--accent);font-size:0.875rem">&#9881; Адмін панель</a>
+            </div>
+            <button class="sidebar-link danger" onclick="Auth.logout()" style="margin-top:auto">Вийти</button>
+        </aside>
+
+        <div class="profile-main">
+            <div class="section-header">
+                <h2>Мій профіль</h2>
+            </div>
+
+            <div id="profile-content">
+                <div class="loading-center"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadProfile() {
+    const content = document.getElementById('profile-content');
+    try {
+        const user = await API.get('/auth/me');
+
+        document.getElementById('profile-avatar').textContent = user.email[0].toUpperCase();
+        document.getElementById('profile-email-display').textContent = user.email;
+        document.getElementById('profile-role-display').innerHTML = `<span class="tag ${user.role === 'admin' ? 'tag-warning' : 'tag-green'}">${user.role === 'admin' ? 'Адміністратор' : 'Клієнт'}</span>`;
+
+        if (user.role === 'admin') {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
+        }
+
+        content.innerHTML = `
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;max-width:500px">
+                <div class="form-group" style="margin-bottom:1.25rem">
+                    <label>Email</label>
+                    <div style="padding:0.6rem 0.875rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:0.875rem;color:var(--text-primary)">${user.email}</div>
+                </div>
+                <div class="form-group">
+                    <label>Роль</label>
+                    <div style="padding:0.6rem 0.875rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);font-size:0.875rem">
+                        <span class="tag ${user.role === 'admin' ? 'tag-warning' : 'tag-green'}">${user.role === 'admin' ? 'Адміністратор' : 'Клієнт'}</span>
+                    </div>
+                </div>
+                <div style="margin-top:1.5rem">
+                    <a href="/profile/bookings" class="btn btn-outline">Переглянути бронювання</a>
+                </div>
+            </div>
+        `;
+    } catch {
+        window.location.href = '/login';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadProfile);
+</script>
+{% endblock %}
