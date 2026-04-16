@@ -24,9 +24,10 @@ async def create_hotel(
 @router.get("", response_model=list[HotelResponse])
 async def get_hotels(
     hotel_service: Annotated[HotelService, Depends(get_hotel_service)],
-    location: str | None = None
+    search: str | None = None,
+    location: str | None = None,
 ):
-    return await hotel_service.get_all_hotels(location)
+    return await hotel_service.get_all_hotels(search=search, location=location)
 
 
 @router.put("/{hotel_id}", response_model=HotelResponse)

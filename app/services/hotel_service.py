@@ -1,5 +1,4 @@
 from app.schemas.hotel import HotelCreate
-from app.exceptions_handler import UserForbidden
 from app.exceptions_handler import HotelNotFound
 from app.repositories.user_repo import UserRepository
 from app.repositories.hotel_repo import HotelRepository
@@ -10,8 +9,13 @@ class HotelService:
         self.hotel_repo = hotel_repo
         self.user_repo = user_repo
 
-    async def get_all_hotels(self, location: str | None = None, stars: int | None = None):
-        return await self.hotel_repo.get_filtered_hotels(location=location, stars=stars)
+    async def get_all_hotels(
+        self,
+        search: str | None = None,
+        location: str | None = None,
+        stars: int | None = None
+    ):
+        return await self.hotel_repo.get_filtered_hotels(search=search, location=location, stars=stars)
 
     async def add_hotel(self, hotel_data: HotelCreate):
         return await self.hotel_repo.add_one(hotel_data.model_dump())
