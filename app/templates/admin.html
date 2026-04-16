@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+
+{% block title %}Адмін панель — HotelBook{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Адмін панель</h1>
+        <p>Керування готелями та номерами</p>
+    </div>
+
+    <div id="admin-content">
+        <div class="loading-center"><div class="spinner"></div></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="hotel-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="hotel-modal-title">Додати готель</h2>
+            <button class="modal-close" onclick="closeModal('hotel-modal')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div id="hotel-modal-alert"></div>
+            <input type="hidden" id="hotel-edit-id">
+            <div class="form-group">
+                <label>Назва</label>
+                <input type="text" id="hotel-title" placeholder="Назва готелю">
+            </div>
+            <div class="form-group">
+                <label>Місто / Локація</label>
+                <input type="text" id="hotel-location" placeholder="Київ">
+            </div>
+            <div class="form-group">
+                <label>Зірки (1–5)</label>
+                <select id="hotel-stars">
+                    <option value="">— без зірок —</option>
+                    <option value="1">1 ★</option>
+                    <option value="2">2 ★★</option>
+                    <option value="3">3 ★★★</option>
+                    <option value="4">4 ★★★★</option>
+                    <option value="5">5 ★★★★★</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Опис</label>
+                <textarea id="hotel-description" rows="3" placeholder="Опис готелю"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('hotel-modal')">Скасувати</button>
+            <button class="btn btn-primary" onclick="saveHotel()">Зберегти</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="room-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 id="room-modal-title">Додати номер</h2>
+            <button class="modal-close" onclick="closeModal('room-modal')">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div id="room-modal-alert"></div>
+            <input type="hidden" id="room-edit-id">
+            <div class="form-group">
+                <label>Готель</label>
+                <select id="room-hotel-id"></select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Номер кімнати</label>
+                    <input type="text" id="room-number" placeholder="101">
+                </div>
+                <div class="form-group">
+                    <label>Тип номеру</label>
+                    <input type="text" id="room-type" placeholder="Стандарт, Люкс...">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Ціна за ніч (₴)</label>
+                <input type="number" id="room-price" placeholder="1500" min="1">
+            </div>
+            <div class="form-group">
+                <label>Доступність</label>
+                <select id="room-available">
+                    <option value="true">Доступний</option>
+                    <option value="false">Зайнятий</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Опис</label>
+                <textarea id="room-description" rows="2" placeholder="Опис номеру"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('room-modal')">Скасувати</button>
+            <button class="btn btn-primary" onclick="saveRoom()">Зберегти</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let hotels = [];
+let rooms = [];
+
+async function initAdmin() {
+    try {
+        const user = await API.get('/auth/me');
+        if (user.role !== 'admin') {
+            window.location.href = '/';
+            return;
+        }
+    } catch {
+        window.location.href = '/login';
+        return;
+    }
+
+    document.getElementById('admin-content').innerHTML = `
+        <div class="admin-layout">
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchTab('hotels')">Готелі</button>
+                <button class="admin-tab" onclick="switchTab('rooms')">Номери</button>
+            </div>
+
+            <div class="admin-panel active" id="tab-hotels">
+                <div class="section-header">
+                    <h2>Готелі</h2>
+                    <button class="btn btn-primary btn-sm" onclick="openAddHotel()">+ Додати готель</button>
+                </div>
+                <div id="hotels-alert"></div>
+                <div id="hotels-table-wrap">
+                    <div class="loading-center"><div class="spinner"></div></div>
+                </div>
+            </div>
+
+            <div class="admin-panel" id="tab-rooms">
+                <div class="section-header">
+                    <h2>Номери</h2>
+                    <button class="btn btn-primary btn-sm" onclick="openAddRoom()">+ Додати номер</button>
+                </div>
+                <div id="rooms-alert"></div>
+                <div id="rooms-table-wrap">
+                    <div class="loading-center"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    await Promise.all([loadHotelsTable(), loadRoomsTable()]);
+}
+
+function switchTab(name) {
+    document.querySelectorAll('.admin-tab').forEach((t, i) => {
+        t.classList.toggle('active', ['hotels','rooms'][i] === name);
+    });
+    document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+async function loadHotelsTable() {
+    const wrap = document.getElementById('hotels-table-wrap');
+    try {
+        hotels = await API.get('/hotel');
+
+        if (hotels.length === 0) {
+            wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div><p>Готелів немає</p></div>`;
+            return;
+        }
+
+        wrap.innerHTML = `
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Назва</th>
+                            <th>Локація</th>
+                            <th>Зірки</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${hotels.map(h => `
+                            <tr>
+                                <td>${h.id}</td>
+                                <td>${h.title}</td>
+                                <td>${h.location}</td>
+                                <td>${h.stars ? renderStars(h.stars) : '—'}</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <button class="btn btn-outline btn-sm" onclick="openEditHotel(${h.id})">Редагувати</button>
+                                        <button class="btn btn-danger btn-sm" onclick="deleteHotel(${h.id})">Видалити</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+async function loadRoomsTable() {
+    const wrap = document.getElementById('rooms-table-wrap');
+    try {
+        rooms = await API.get('/rooms');
+
+        if (rooms.length === 0) {
+            wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon"></div><p>Номерів немає</p></div>`;
+            return;
+        }
+
+        wrap.innerHTML = `
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Готель</th>
+                            <th>Номер</th>
+                            <th>Тип</th>
+                            <th>Ціна/ніч</th>
+                            <th>Статус</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rooms.map(r => {
+                            const hotel = hotels.find(h => h.id === r.hotel_id);
+                            return `
+                                <tr>
+                                    <td>${r.id}</td>
+                                    <td>${hotel ? hotel.title : r.hotel_id}</td>
+                                    <td>${r.number}</td>
+                                    <td>${r.room_type}</td>
+                                    <td>${formatCurrency(r.price_per_night)}</td>
+                                    <td><span class="tag ${r.is_available ? 'tag-green' : 'tag-danger'}">${r.is_available ? 'Доступний' : 'Зайнятий'}</span></td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <button class="btn btn-outline btn-sm" onclick="openEditRoom(${r.id})">Редагувати</button>
+                                            <button class="btn btn-danger btn-sm" onclick="deleteRoom(${r.id})">Видалити</button>
+                                        </div>
+                                    </td>
+                                </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch (e) {
+        wrap.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+}
+
+function populateHotelSelect() {
+    const sel = document.getElementById('room-hotel-id');
+    sel.innerHTML = hotels.map(h => `<option value="${h.id}">${h.title}</option>`).join('');
+}
+
+function openAddHotel() {
+    document.getElementById('hotel-modal-title').textContent = 'Додати готель';
+    document.getElementById('hotel-edit-id').value = '';
+    document.getElementById('hotel-title').value = '';
+    document.getElementById('hotel-location').value = '';
+    document.getElementById('hotel-stars').value = '';
+    document.getElementById('hotel-description').value = '';
+    document.getElementById('hotel-modal-alert').innerHTML = '';
+    openModal('hotel-modal');
+}
+
+function openEditHotel(id) {
+    const h = hotels.find(h => h.id === id);
+    if (!h) return;
+    document.getElementById('hotel-modal-title').textContent = 'Редагувати готель';
+    document.getElementById('hotel-edit-id').value = id;
+    document.getElementById('hotel-title').value = h.title;
+    document.getElementById('hotel-location').value = h.location;
+    document.getElementById('hotel-stars').value = h.stars || '';
+    document.getElementById('hotel-description').value = h.description || '';
+    document.getElementById('hotel-modal-alert').innerHTML = '';
+    openModal('hotel-modal');
+}
+
+async function saveHotel() {
+    const id = document.getElementById('hotel-edit-id').value;
+    const data = {
+        title: document.getElementById('hotel-title').value,
+        location: document.getElementById('hotel-location').value,
+        stars: document.getElementById('hotel-stars').value ? parseInt(document.getElementById('hotel-stars').value) : null,
+        description: document.getElementById('hotel-description').value || null,
+    };
+    const alertEl = document.getElementById('hotel-modal-alert');
+
+    if (!data.title || !data.location) {
+        showAlert(alertEl, 'Назва та локація обов\'язкові');
+        return;
+    }
+
+    try {
+        if (id) {
+            await API.put(`/hotel/${id}`, data);
+        } else {
+            await API.post('/hotel', data);
+        }
+        closeModal('hotel-modal');
+        await loadHotelsTable();
+    } catch (e) {
+        showAlert(alertEl, e.message);
+    }
+}
+
+async function deleteHotel(id) {
+    if (!confirm('Видалити цей готель? Всі номери також будуть видалені.')) return;
+    try {
+        await API.delete(`/hotel/${id}`);
+        await Promise.all([loadHotelsTable(), loadRoomsTable()]);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+function openAddRoom() {
+    populateHotelSelect();
+    document.getElementById('room-modal-title').textContent = 'Додати номер';
+    document.getElementById('room-edit-id').value = '';
+    document.getElementById('room-number').value = '';
+    document.getElementById('room-type').value = '';
+    document.getElementById('room-price').value = '';
+    document.getElementById('room-available').value = 'true';
+    document.getElementById('room-description').value = '';
+    document.getElementById('room-modal-alert').innerHTML = '';
+    openModal('room-modal');
+}
+
+function openEditRoom(id) {
+    populateHotelSelect();
+    const r = rooms.find(r => r.id === id);
+    if (!r) return;
+    document.getElementById('room-modal-title').textContent = 'Редагувати номер';
+    document.getElementById('room-edit-id').value = id;
+    document.getElementById('room-hotel-id').value = r.hotel_id;
+    document.getElementById('room-number').value = r.number;
+    document.getElementById('room-type').value = r.room_type;
+    document.getElementById('room-price').value = r.price_per_night;
+    document.getElementById('room-available').value = r.is_available ? 'true' : 'false';
+    document.getElementById('room-description').value = r.description || '';
+    document.getElementById('room-modal-alert').innerHTML = '';
+    openModal('room-modal');
+}
+
+async function saveRoom() {
+    const id = document.getElementById('room-edit-id').value;
+    const alertEl = document.getElementById('room-modal-alert');
+
+    const number = document.getElementById('room-number').value;
+    const room_type = document.getElementById('room-type').value;
+    const price = parseInt(document.getElementById('room-price').value);
+
+    if (!number || !room_type || !price) {
+        showAlert(alertEl, 'Заповніть всі обов\'язкові поля');
+        return;
+    }
+
+    try {
+        if (id) {
+            await API.patch(`/rooms/${id}`, {
+                number,
+                room_type,
+                price_per_night: price,
+                is_available: document.getElementById('room-available').value === 'true',
+                description: document.getElementById('room-description').value || null,
+            });
+        } else {
+            await API.post('/rooms', {
+                hotel_id: parseInt(document.getElementById('room-hotel-id').value),
+                number,
+                room_type,
+                price_per_night: price,
+                description: document.getElementById('room-description').value || null,
+            });
+        }
+        closeModal('room-modal');
+        await loadRoomsTable();
+    } catch (e) {
+        showAlert(alertEl, e.message);
+    }
+}
+
+async function deleteRoom(id) {
+    if (!confirm('Видалити цей номер?')) return;
+    try {
+        await API.delete(`/rooms/${id}`);
+        await loadRoomsTable();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initAdmin);
+</script>
+{% endblock %}
