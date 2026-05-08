@@ -6,4 +6,11 @@ class BookingNotFound(AppError):
 
 
 class BookingAlreadyCancelled(AppError):
+    pass 
+
+
+class InvalidDateRange(Exception):
+    pass
+
+class ForbiddenBookingAccess(Exception):
     pass

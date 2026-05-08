@@ -1,5 +1,4 @@
 from datetime import date
-from fastapi import HTTPException
 
 from app.repositories.room_repo import RoomRepository
 from app.repositories.booking_repo import BookingRepository
@@ -8,7 +7,9 @@ from app.exceptions_handler import (
     RoomAlreadyBooked,
     RoomIsNotAvailable,
     BookingNotFound,
-    BookingAlreadyCancelled
+    BookingAlreadyCancelled,
+    InvalidDateRange,
+    ForbiddenBookingAccess
 )
 
 
@@ -19,7 +20,7 @@ class BookingService:
 
     async def create_booking(self, user_id: int, hotel_id: int, room_number: str, check_in: date, check_out: date):
         if check_in >= check_out:
-            raise HTTPException(status_code=400, detail="Дата заїзду має бути раніше дати виїзду")
+            raise InvalidDateRange("Дата заїзду має бути раніше дати виїзду")
 
         room = await self.room_repo.find_by_hotel_and_number(hotel_id, room_number)
         if not room:
@@ -54,10 +55,7 @@ class BookingService:
             raise BookingNotFound()
 
         if booking.user_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Ви не можете скасувати чуже бронювання"
-            )
+            raise ForbiddenBookingAccess("Ви не можете скасувати чуже бронювання")
 
         if booking.status == "cancelled":
             raise BookingAlreadyCancelled()
