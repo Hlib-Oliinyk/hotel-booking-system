@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from app.utils.exceptions.hotel import HotelNotFound
 from app.utils.exceptions.token import InvalidCredentials
 from app.utils.exceptions.user import UserExists, UserNotFound, UserForbidden
-from app.utils.exceptions.booking import BookingNotFound, BookingAlreadyCancelled
+from app.utils.exceptions.booking import BookingNotFound, BookingAlreadyCancelled, InvalidDateRange, ForbiddenBookingAccess
 from app.utils.exceptions.room import RoomNotFound, RoomAlreadyBooked, RoomIsNotAvailable
 
 
@@ -77,4 +77,22 @@ def setup_exception_handler(app):
         return JSONResponse(
             status_code=400,
             content={"details": "Booking already cancelled"}
+        )
+        
+    @app.exception_handler(InvalidDateRange)
+    async def invalid_date_range_handler(request, exc):
+        # Використовуємо str(exc), щоб передати текст "Дата заїзду має бути раніше..." 
+        # або дефолтний текст, якщо помилка викликана без аргументів
+        error_msg = str(exc) if str(exc) else "Invalid date range"
+        return JSONResponse(
+            status_code=400,
+            content={"details": error_msg}
+        )
+
+    @app.exception_handler(ForbiddenBookingAccess)
+    async def forbidden_booking_access_handler(request, exc):
+        error_msg = str(exc) if str(exc) else "Insufficient access rights for this booking"
+        return JSONResponse(
+            status_code=403,
+            content={"details": error_msg}
         )
