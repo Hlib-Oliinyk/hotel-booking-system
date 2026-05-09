@@ -1,5 +1,6 @@
 from datetime import date
 
+from app.models.booking import Booking
 from app.repositories.room_repo import RoomRepository
 from app.repositories.booking_repo import BookingRepository
 from app.exceptions_handler import (
@@ -19,9 +20,6 @@ class BookingService:
         self.room_repo = room_repo
 
     async def create_booking(self, user_id: int, hotel_id: int, room_number: str, check_in: date, check_out: date):
-        if check_in >= check_out:
-            raise InvalidDateRange("Дата заїзду має бути раніше дати виїзду")
-
         room = await self.room_repo.find_by_hotel_and_number(hotel_id, room_number)
         if not room:
             raise RoomNotFound()
@@ -32,16 +30,27 @@ class BookingService:
         if booked_count >= 1:
             raise RoomAlreadyBooked()
 
-        days = (check_out - check_in).days
-        total_cost = days * room.price_per_night
+        booking = Booking(
+            user_id=user_id,
+            room_id=room.id,
+            check_in=check_in,
+            check_out=check_out,
+            total_cost=0,
+            status="confirmed"
+        )
+
+        try:
+            total_cost = booking.calculate_total_cost(room.price_per_night)
+        except ValueError as exc:
+            raise InvalidDateRange(str(exc))
 
         booking_data = {
-            "user_id": user_id,
-            "room_id": room.id,
-            "check_in": check_in,
-            "check_out": check_out,
+            "user_id": booking.user_id,
+            "room_id": booking.room_id,
+            "check_in": booking.check_in,
+            "check_out": booking.check_out,
             "total_cost": total_cost,
-            "status": "confirmed"
+            "status": booking.status
         }
         return await self.booking_repo.add_one(booking_data)
 
@@ -57,10 +66,12 @@ class BookingService:
         if booking.user_id != user_id:
             raise ForbiddenBookingAccess("Ви не можете скасувати чуже бронювання")
 
-        if booking.status == "cancelled":
+        try:
+            booking.cancel()
+        except ValueError:
             raise BookingAlreadyCancelled()
 
         return await self.booking_repo.update_one(
             booking_id,
-            {"status": "cancelled"}
+            {"status": booking.status}
         )
