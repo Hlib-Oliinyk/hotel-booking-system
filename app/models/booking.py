@@ -17,3 +17,19 @@ class Booking(Base):
 
     user: Mapped["User"] = relationship(back_populates="bookings")
     room: Mapped["Room"] = relationship(back_populates="bookings")
+
+    def validate_dates(self) -> None:
+        if self.check_in >= self.check_out:
+            raise ValueError("Дата заїзду має бути раніше дати виїзду")
+
+    def calculate_total_cost(self, price_per_night: int) -> int:
+        self.validate_dates()
+        return (self.check_out - self.check_in).days * price_per_night
+
+    def is_cancelled(self) -> bool:
+        return self.status == "cancelled"
+
+    def cancel(self) -> None:
+        if self.is_cancelled():
+            raise ValueError("Booking is already cancelled")
+        self.status = "cancelled"
