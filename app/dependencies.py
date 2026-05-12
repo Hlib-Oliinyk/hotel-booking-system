@@ -23,37 +23,70 @@ async def get_db():
         yield db
 
 
-def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserService:
-    return UserService(UserRepository(db))
+def get_user_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> UserRepository:
+    return UserRepository(db)
 
 
-def get_token_service(db: Annotated[AsyncSession, Depends(get_db)]) -> TokenService:
-    return TokenService(TokenRepository(db), UserRepository(db))
+def get_hotel_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> HotelRepository:
+    return HotelRepository(db)
 
 
-async def get_hotel_service(db: Annotated[AsyncSession, Depends(get_db)]) -> HotelService:
-    return HotelService(HotelRepository(db), UserRepository(db))
+def get_room_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> RoomRepository:
+    return RoomRepository(db)
 
 
-async def get_room_service(db: Annotated[AsyncSession, Depends(get_db)]) -> RoomService:
-    return RoomService(RoomRepository(db), HotelRepository(db))
+def get_booking_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> BookingRepository:
+    return BookingRepository(db)
 
 
-async def get_booking_service(db: Annotated[AsyncSession, Depends(get_db)]) -> BookingService:
-    return BookingService(BookingRepository(db), RoomRepository(db))
+def get_token_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> TokenRepository:
+    return TokenRepository(db)
 
+
+def get_user_service(
+    user_repo: Annotated[UserRepository, Depends(get_user_repository)]
+) -> UserService:
+    return UserService(user_repo)
+
+
+def get_token_service(
+    token_repo: Annotated[TokenRepository, Depends(get_token_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repository)]
+) -> TokenService:
+    return TokenService(token_repo, user_repo)
+
+
+def get_hotel_service(
+    hotel_repo: Annotated[HotelRepository, Depends(get_hotel_repository)],
+    user_repo: Annotated[UserRepository, Depends(get_user_repository)]
+) -> HotelService:
+    return HotelService(hotel_repo, user_repo)
+
+
+def get_room_service(
+    room_repo: Annotated[RoomRepository, Depends(get_room_repository)],
+    hotel_repo: Annotated[HotelRepository, Depends(get_hotel_repository)]
+) -> RoomService:
+    return RoomService(room_repo, hotel_repo)
+
+
+def get_booking_service(
+    booking_repo: Annotated[BookingRepository, Depends(get_booking_repository)],
+    room_repo: Annotated[RoomRepository, Depends(get_room_repository)]
+) -> BookingService:
+    return BookingService(booking_repo, room_repo)
 
 def get_token_from_header_or_cookie(request: Request) -> str:
+    # Виправлено: стандарт JWT використовує "Bearer " без двокрапки
     auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer: "):
-        return auth_header[7:]
-
+    if auth_header and auth_header.startswith("Bearer "):
+        return auth_header[7:]  # "Bearer " довжина = 7
+    
     cookie_token = request.cookies.get("access_token")
     if cookie_token:
         return cookie_token
-
+    
     raise InvalidCredentials()
-
 
 async def get_current_user(
     token: Annotated[str, Depends(get_token_from_header_or_cookie)],
@@ -64,7 +97,9 @@ async def get_current_user(
     return user
 
 
-async def get_current_admin_user(current_user: Annotated[User, Depends(get_current_user)]):
+def get_current_admin_user(
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> User:  # Додано явний тип повернення
     if current_user.role != "admin":
         raise UserForbidden()
     return current_user
