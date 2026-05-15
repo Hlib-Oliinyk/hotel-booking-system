@@ -1,4 +1,5 @@
 from .base import AppError
 
 class HotelNotFound(AppError):
-    pass
+    status_code = 404
+    detail = "Hotel not found"

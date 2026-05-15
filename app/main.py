@@ -15,7 +15,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-app.include_router(router, prefix="/api")
+app.include_router(router)
 setup_exception_handler(app)
 
 
