@@ -1,5 +1,5 @@
 from app.schemas.hotel import HotelCreate
-from app.exceptions_handler import HotelNotFound
+from app.utils.exceptions.hotel import HotelNotFound
 from app.repositories.user_repo import UserRepository
 from app.repositories.hotel_repo import HotelRepository
 

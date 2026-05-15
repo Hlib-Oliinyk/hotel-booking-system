@@ -15,7 +15,8 @@ from app.repositories.hotel_repo import HotelRepository
 from app.repositories.token_repo import TokenRepository
 from app.securities.authorization.jwt import jwt_generator
 from app.repositories.booking_repo import BookingRepository
-from app.exceptions_handler import InvalidCredentials, UserForbidden
+from app.utils.exceptions.token import InvalidCredentials
+from app.utils.exceptions.user import UserForbidden
 
 
 async def get_db():

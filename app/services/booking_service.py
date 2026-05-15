@@ -3,10 +3,12 @@ from datetime import date
 from app.models.booking import Booking
 from app.repositories.room_repo import RoomRepository
 from app.repositories.booking_repo import BookingRepository
-from app.exceptions_handler import (
+from app.utils.exceptions.room import (
     RoomNotFound,
     RoomAlreadyBooked,
     RoomIsNotAvailable,
+)
+from app.utils.exceptions.booking import (
     BookingNotFound,
     BookingAlreadyCancelled,
     InvalidDateRange,

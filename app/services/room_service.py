@@ -1,4 +1,4 @@
-from app.exceptions_handler import RoomNotFound
+from app.utils.exceptions.room import RoomNotFound
 from app.schemas.room import RoomCreate, RoomUpdate
 from app.utils.exceptions.hotel import HotelNotFound
 from app.repositories.room_repo import RoomRepository
