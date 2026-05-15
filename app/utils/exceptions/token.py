@@ -2,4 +2,6 @@ from .base import AppError
 
 
 class InvalidCredentials(AppError):
-    pass
+    status_code = 401
+    detail = "Could not validate credentials"
+    headers = {"WWW-Authenticate": "Bearer"}
